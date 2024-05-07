@@ -1,0 +1,3147 @@
+{%- assign meta_block = section.blocks | where: 'type', 'product_meta' | first -%}
+{%- assign share_buttons_block = section.blocks | where: 'type', 'share_buttons' | first -%}
+{%- assign inventory_block = section.blocks | where: 'type', 'inventory' | first -%}
+{%- assign buy_buttons_block = section.blocks | where: 'type', 'buy_buttons' | first -%}
+{%- assign find_in_store_block = section.blocks | where: 'type', 'find_in_store' | first -%}
+{%- assign enquire_block = section.blocks | where: 'type', 'enquire' | first -%}
+{%- assign pendant_block = section.blocks | where: 'type', 'pendant_selector' | first -%}
+{%- assign pendant_multiple_block = section.blocks | where: 'type', 'pendant_multiple_selector' | first -%}
+
+{%- assign variant_price = product.selected_or_first_available_variant.price -%}
+{%- assign necklace_price = product.metafields.custom.necklace_price.value -%}
+{%- assign variant_price = variant_price | plus: necklace_price -%}
+
+{%- assign view_type = cart.attributes.collection_view_type | default: 'flatlay-view' -%}
+
+{%- assign production_time_tags_order = settings.production_time_tags_order | strip_newlines | split: ',' -%}
+{%- assign productionTime = '' -%}
+{%- assign product_template_suffix = product.template_suffix | default: 'default' -%}
+
+{%- for tag in product.tags -%}
+  {%- if tag contains 'Production Time_' and production_time_tags_order contains tag -%}
+    {%- assign productionTime = tag | split: '_' | last -%}
+    <script>
+      window.productionTime = {{ productionTime | json }}
+    </script>
+    {%- break -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- assign ignore_wislist = false -%}
+{%- capture ignore_templates -%}{{ settings.wishlist_ignore_template | json }}{%- endcapture -%}
+{%- capture template_suffix -%}"{{ product_template_suffix }}"{%- endcapture -%}
+{%- assign ignore_templates = ignore_templates | split: '\n' | remove: '\"' -%}
+{%- if ignore_templates contains template_suffix -%}
+  {%- assign ignore_wislist = true -%}
+{%- endif -%}
+
+{%- if product.tags contains 'Event_Archive Sale' -%}
+  {%- assign archive_sale = true -%}
+{%- endif -%}
+
+{% liquid
+  assign escaped_single_quote = "'" | escape
+  assign first_variant = product.selected_or_first_available_variant | json
+  assign first_variant = first_variant | replace: "'", escaped_single_quote
+ %}
+
+{%- capture section_settings -%}
+{
+  "enableHistoryState": false,
+  "templateSuffix": {{ product.template_suffix | json }},
+  "showInventoryQuantity": {% if inventory_block != blank %}true{% else %}false{% endif %},
+  "showSku": {{ meta_block.settings.show_sku | json }},
+  "stackProductImages": {{ section.settings.stack_images | json }},
+  "stackProductImagesMobile": {{ section.settings.stack_images_mobile | json }},
+  "showThumbnails": {{ section.settings.show_thumbnails | json }},
+  "enableVideoLooping": {{ section.settings.enable_video_looping | json }},
+  "inventoryQuantityThreshold": {{ inventory_block.settings.inventory_quantity_threshold | default: 0 }},
+  "showPriceInButton": {{ buy_buttons_block.settings.show_price_in_button | json }},
+  "enableImageZoom": {{ section.settings.enable_image_zoom | json }},
+  "showPaymentButton": {{ buy_buttons_block.settings.show_payment_button | json }},
+  "useAjaxCart": {% if settings.cart_type == 'drawer' %}true{% else %}false{% endif %},
+  "productionTime": {{ productionTime | json }},
+  "initialVariant": {{ first_variant }},
+  "uploadery": {% if product.tags contains 'locket' %}true{% else %}false{% endif %},
+  "isPair": {% if product.tags contains 'Template_Same Pair' %}true{% else %}false{% endif %},
+  "isEngraved": {% if product.template_suffix == 'personalised' %}true{% else %}false{% endif %},
+  "prohibitedString": {{ settings.engraving_prohibited_words | json }},
+  "isPendantBuilder": {% if pendant_block != blank or pendant_multiple_block != blank %}true{% else %}false{% endif %},
+  "isMultiplePendant": {% if pendant_multiple_block != blank %}true{% else %}false{% endif %},
+  "pendantType": {% if pendant_block != blank %}{{ pendant_block.settings.title | json }}{% else %}{{ pendant_multiple_block.settings.title | json }}{% endif %},
+  "isAvailable": {% if product.available %}true{% else %}false{% endif %},
+  "stock_status_threshold": {{ settings.stock_status_threshold }},
+  "necklace_price": {{ necklace_price | json }},
+	"isGiftCard": {% if product.type == 'Gift Card' %}true{% else %}false{% endif %},
+	"hasVariantsOptions": {% if product.options_by_name['Letter'].values %}true{% elsif product.options_by_name['Length'].values %}true{% else %}false{% endif %}
+}
+{%- endcapture -%}
+
+{%- assign topLeftHtml = '' -%}
+{%- assign topRightHtml = '' -%}
+{%- assign bottomLeftHtml = '' -%}
+{%- assign bottomRightHtml = '' -%}
+
+{%- assign topRightOptionWrapper = '' -%}
+
+{%- assign additionalDrawersHtml = '' -%}
+{%- assign has_ouputted_variant_selector = false -%}
+
+{%- for block in section.blocks -%}
+  {%- case block.type -%}
+    {%- when '@app' -%}
+      {%- capture blockContent -%}
+        	{%- render block -%}
+		{%- endcapture -%}
+
+      {%- if section.settings.app_block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif section.settings.app_block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif section.settings.app_block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif section.settings.app_block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif section.settings.app_block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'content' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- assign ignoreList = block.settings.ignore_list | strip_newlines | split: '|' -%}
+
+			{%- if block.settings.convert_to_list -%}
+				{%- assign convertedBlockContent = block.settings.content | replace: '<p>', '<li>' | replace: '</p>', '</li>' -%}
+				{%- for ignoreItem in ignoreList -%}
+					{%- assign ignoreItemEdited = ignoreItem | remove: '{META}' | prepend: '<li>' | append: '</li>' -%}
+					{%- assign convertedBlockContent = convertedBlockContent | remove: ignoreItemEdited -%}
+				{%- endfor -%}
+				{%- assign finalBlockContent = convertedBlockContent | remove: '<li></li>' | remove: '<li> </li>' | replace: ' and </li>', '</li>' -%}
+
+			{%- else -%}
+				{%- assign convertedBlockContent = block.settings.content -%}
+				{%- for ignoreItem in ignoreList -%}
+					{%- assign ignoreItemEdited = ignoreItem | remove: '{META}' | prepend: '<p>' | append: '</p>' -%}
+					{%- assign convertedBlockContent = convertedBlockContent | remove: ignoreItem -%}
+				{%- endfor -%}
+				{%- assign finalBlockContent = convertedBlockContent | remove: '<p></p>' | remove: '<p> </p>' | replace: ' and </p>', '</p>' -%}
+			{%- endif -%}
+
+			{%- if block.settings.title != blank and convertedBlockContent != blank or block.settings.page != blank -%}
+
+		      <div class="Collapsible">
+		        <button class="Collapsible__Button Heading u-h6" data-action="toggle-collapsible" aria-expanded="{% if block.settings.default_open %}true{% else %}false{% endif %}">
+		          {{ block.settings.title | escape }} <span class="Collapsible__Plus"></span>
+		        </button>
+
+		        <div class="Collapsible__Inner" {% if block.settings.default_open %}style="overflow: visible;height: auto;"{% endif %}>
+		          <div class="Collapsible__Content">
+		            <div class="Rte">
+									{%- if block.settings.convert_to_list -%}
+										<ul>
+											{{ finalBlockContent }}
+										</ul>
+									{%- else -%}
+										{{ finalBlockContent }}
+									{%- endif -%}
+
+									{{ block.settings.page.content }}
+		            </div>
+		          </div>
+		        </div>
+		      </div>
+			{%- endif -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'seperator' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			<div id="block-{{ block.id }}" class="seperator" {{ block.shopify_attributes }} style="{%- if product.template_suffix == 'book-a-service' -%}display:none;{% endif %}">
+				<style>
+					#block-{{ block.id }} {
+						height: {{ block.settings.desktop_height }};
+					}
+
+					@media only screen and (max-width: 990px) {
+						#block-{{ block.id }} {
+							height: {{ block.settings.tablet_height }};
+						}
+					}
+
+					@media only screen and (max-width: 480px) {
+						#block-{{ block.id }} {
+							height: {{ block.settings.mobile_height }};
+						}
+					}
+				</style>
+			</div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'additional_button' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+            <div class="{% if block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type }} Button--full{% endif %}">
+                <a data-transition="fade_forward" href="{{ block.settings.button_link }}">{{ block.settings.title }}</a>
+            </div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'buy_now_pay_later' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {% assign afterpay_maximum_value_in_cents = 200000 %}
+      {% assign afterpay_supported_currencies = 'AUD, NZD, USD' | split: ', ' %}
+      {% if shop.currency == 'USD' %}
+        {% assign afterpay_minimum_value_in_cents = 3500 %}
+      {% else %}
+        {% assign afterpay_minimum_value_in_cents = 4 %}
+      {% endif %}
+
+      {% if afterpay_supported_currencies contains shop.currency %}
+        {% for afterpay_variant in product.variants %}
+          {% if afterpay_variant.available
+            and afterpay_variant.price >= afterpay_minimum_value_in_cents
+            and afterpay_variant.price <= afterpay_maximum_value_in_cents
+          %}
+            {% assign afterpay_count_eligible_variants = afterpay_count_eligible_variants | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if afterpay_count_eligible_variants > 0 %}
+        {%- capture blockContent -%}
+				{%- assign showBuyNowPayLaterBlockId = block.id -%}
+				{%- if block.settings.content != blank or block.settings.page != blank -%}
+		            <div class="BuyNowPayLater Text--subdued" data-action="toggle-drawer" data-drawer-id="{{ block.id }}-drawer" aria-label="Buy now, pay later">
+		                <span>Buy now or pay later. <span class="Link--underline">See options</span></span>
+		            </div>
+				{%- endif -%}
+			  	{%- capture additionalDrawerHtml -%}
+				  	{%- render 'additional-drawer',
+						drawerID: block.id,
+						removePadding: block.settings.remove_padding,
+						drawerTitle: block.settings.title,
+						pageContent: block.settings.page,
+						standardContent: block.settings.content,
+						htmlContent: block.settings.html_content,
+						uspContent: block.settings.unique_selling_points,
+						uspContentCopy: block.settings.unique_selling_points_copy,
+						additionalClass: 'BuyNowPayLater_Drawer'
+					-%}
+				{%- endcapture -%}
+				{%- assign additionalDrawersHtml = additionalDrawersHtml | append: additionalDrawerHtml -%}
+			{%- endcapture -%}
+
+        {%- if block.settings.block_position == 'topLeft' -%}
+          {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+        {%- elsif block.settings.block_position == 'topRight' -%}
+          {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+        {%- elsif block.settings.block_position == 'bottomLeft' -%}
+          {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+        {%- elsif block.settings.block_position == 'bottomRight' -%}
+          {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+        {%- endif -%}
+      {%- endif -%}
+
+    {%- when 'additional_drawer' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- if block.settings.title != blank and block.settings.content != blank or block.settings.page != blank -%}
+	            <div class="{% if block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type }} Button--full{% endif %}" data-action="toggle-drawer" data-drawer-id="{{ block.id }}-drawer" aria-label="{{ block.settings.title }}">
+	                <span>{{ block.settings.title }}</span>
+	            </div>
+			{%- endif -%}
+		  	{%- capture additionalDrawerHtml -%}
+			  	{%- render 'additional-drawer',
+					drawerID: block.id,
+					removePadding: block.settings.remove_padding,
+					drawerTitle: block.settings.title,
+					pageContent: block.settings.page,
+					standardContent: block.settings.content,
+					htmlContent: block.settings.html_content,
+					uspContent: block.settings.unique_selling_points,
+					uspContentCopy: block.settings.unique_selling_points_copy,
+					additionalClass: ''
+				-%}
+			{%- endcapture -%}
+			{%- assign additionalDrawersHtml = additionalDrawersHtml | append: additionalDrawerHtml -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'find_in_store' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+            <div class="{% if block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type }} Button--full{% endif %}" data-action="error-text" data-drawer-id="find-in-store-drawer" aria-label="{{ block.settings.title }}">
+                <span>{{ block.settings.title }}</span>
+            </div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'enquire' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- if block.settings.title != blank and block.settings.content != blank or block.settings.page != blank -%}
+	            <div class="{% unless buy_buttons_block != blank %}hidden-pocket{% endunless %} {% if block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type }} Button--full{% endif %}" data-action="toggle-drawer" data-drawer-id="enquire-drawer" aria-label="{{ block.settings.title }}">
+	                <span>{{ block.settings.title }}</span>
+	            </div>
+              {%- unless ignore_wislist -%}
+                <wishlist-button class="js-wishlist-button" product="{{ product | json | escape }}" product-bi-line="{{ product.metafields.custom.product_bi_line.value }}" properties="" variant-selected-id="" variant-selected="" template-suffix="{{ product_template_suffix }}" disabled="disabled" error-message=""></wishlist-button>
+              {%- endunless -%}
+			{%- endif -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'product_meta' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        	{%- render 'product-meta', form: form, block: block, product: product, mobile: false -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'description' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+		{%- if block.settings.show_as_accordion and product.description != blank -%}
+		      <div class="Collapsible">
+		        <button class="Collapsible__Button Heading u-h6" data-action="toggle-collapsible" aria-expanded="{% if block.settings.default_open %}true{% else %}false{% endif %}">
+		          {{ block.settings.title | escape }} <span class="Collapsible__Plus"></span>
+		        </button>
+
+		        <div class="Collapsible__Inner" {% if block.settings.default_open %}style="overflow: visible;height: auto;"{% endif %}>
+		          <div class="Collapsible__Content">
+		            <div class="Rte">
+		              {{- product.description | replace: 'data-section-type', 'data-section-type-placeholder' -}}
+		            </div>
+		          </div>
+		        </div>
+		      </div>
+		{%- else -%}
+            {%- if product.description != blank -%}
+              <div class="ProductMeta__Description" {{ block.shopify_attributes }}>
+                <div class="Rte">
+                  {%- if block.settings.title  != blank -%}
+				  	<span class="Collapsible__Button Heading u-h6">{{ block.settings.title | escape }}</span>
+				  {%- endif -%}
+                  {{- product.description | replace: 'data-section-type', 'data-section-type-placeholder' -}}
+                </div>
+              </div>
+            {%- endif -%}
+		{%- endif -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'share_buttons' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        <div class="ProductMeta__ShareButtons hidden-pocket" {{ block.shopify_attributes }}>
+          <span class="ProductMeta__ShareTitle Heading Text--subdued u-h7">{{ 'product.form.share' | t }}</span>
+
+          {%- assign share_url = shop.url | append: product.url -%}
+          {%- assign twitter_text = product.title -%}
+          {%- assign pinterest_description = product.description | strip_html | truncatewords: 15 | url_param_escape -%}
+          {%- assign pinterest_image = product.featured_image | img_url: 'large' | prepend: 'https:' -%}
+
+          <div class="ProductMeta__ShareList Text--subdued">
+            <a class="ProductMeta__ShareItem" href="https://www.facebook.com/sharer.php?u={{ share_url }}" target="_blank" rel="noopener" aria-label="Facebook">{%- render 'icon' with 'facebook' -%}</a>
+            <a class="ProductMeta__ShareItem" href="https://twitter.com/share?{% if twitter_text != blank %}text={{twitter_text}}&{% endif %}url={{ share_url }}" target="_blank" rel="noopener" aria-label="Twitter">{%- render 'icon' with 'twitter' -%}</a>
+            <a class="ProductMeta__ShareItem" href="https://pinterest.com/pin/create/button/?url={{ share_url }}{% if pinterest_image != blank %}&media={{ pinterest_image }}{% endif %}&description={{ pinterest_description }}" target="_blank" rel="noopener" aria-label="Pinterest">{%- render 'icon' with 'pinterest' -%}</a>
+          </div>
+        </div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'variant_selector' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- render 'product-form', block: block, product: product -%}
+		{%- endcapture -%}
+
+      {%- assign has_ouputted_variant_selector = true -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'pendant_selector' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- render 'product-form', block: block, product: product, pendant_count: block.settings.pendant_count, pendant_collection: block.settings.pendant_collection, pendant_title: block.settings.title, core_product_single_1: block.settings.core_product_single_1, core_product_single_2: block.settings.core_product_single_2, core_product_multi_1: block.settings.core_product_multi_1, core_product_multi_2: block.settings.core_product_multi_2, swatch_mode: block.settings.swatch_mode -%}
+		{%- endcapture -%}
+
+      {%- assign has_ouputted_variant_selector = true -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'pendant_multiple_selector' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+			{%- render 'product-form',
+				block: block,
+				product: product,
+				pendant_count: block.settings.pendant_count,
+				is_multiple_pendant: true,
+				pendant_title: block.settings.title,
+				single_letter_yellow: block.settings.single_letter_yellow,
+				single_letter_white: block.settings.single_letter_white,
+				single_stone_yellow: block.settings.single_stone_yellow,
+				single_stone_white: block.settings.single_stone_white,
+				pendant_letter_collection: block.settings.pendant_letter_collection,
+				pendant_stone_collection: block.settings.pendant_stone_collection,
+				swatch_mode: block.settings.swatch_mode
+			-%}
+		{%- endcapture -%}
+
+      {%- assign has_ouputted_variant_selector = true -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'quantity_selector' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        <div class="ProductForm__QuantitySelector" {{ block.shopify_attributes }}>
+          {%- if block.settings.show_label -%}
+            <span class="ProductForm__Label">{{ 'product.form.quantity' | t }}:</span>
+          {%- endif -%}
+
+          <div class="QuantitySelector QuantitySelector--large">
+            {%- assign quantity_minus_one = line_item.quantity | minus: 1 -%}
+
+            <button type="button" class="QuantitySelector__Button Link Link--secondary" data-action="decrease-quantity">{% render 'icon' with 'minus' %}</button>
+            <input type="text" class="QuantitySelector__CurrentQuantity" pattern="[0-9]*" name="quantity" value="1" aria-label="{{ 'product.form.quantity' | t }}">
+            <button type="button" class="QuantitySelector__Button Link Link--secondary" data-action="increase-quantity">{% render 'icon' with 'plus' %}</button>
+          </div>
+        </div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'inventory' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        <p class="ProductForm__Inventory js-inventory-message" {{ block.shopify_attributes }}>
+				{%- if product.selected_or_first_available_variant.inventory_quantity >= block.settings.inventory_quantity_threshold -%}
+					{{ settings.ready_to_ship_wording }}
+				{%- endif -%}
+				{%- if productionTime != blank -%}
+					{{ settings.made_to_order_wording }} {{ productionTime }}
+				{%- endif -%}
+
+        </p>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'unique_selling_point' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+	        <div class="ProductUSP" {{ block.shopify_attributes }}>
+				{%- if block.settings.unique_selling_points contains ',' -%}
+					{%- assign productUniqueSellingPoints = block.settings.unique_selling_points | split: ',' -%}
+				{%- else -%}
+					{%- assign productUniqueSellingPoints = block.settings.unique_selling_points | split: ' and ' -%}
+				{%- endif -%}
+				{%- if productUniqueSellingPoints != blank -%}
+					{%- for productUniqueSellingPoint in productUniqueSellingPoints -%}
+						{%- assign productUniqueSellingPointStripped = productUniqueSellingPoint | remove: ' and ' | strip -%}
+						{%- assign productUniqueSellingPointHandle = productUniqueSellingPoint | remove: ' and ' | handle -%}
+						{%- assign uniqueSellingPointImage = productUniqueSellingPointHandle | append: '.png' -%}
+						{%- assign image_url = uniqueSellingPointImage | file_img_url: '1x1' | replace: '_1x1.', '_{width}x.' -%}
+						<img class="Image--lazyLoad Image--fadeIn lazyautosizes"
+							data-src="{{ image_url }}"
+							data-sizes="auto"
+							width="auto"
+							height="26px"
+							alt="{{ productUniqueSellingPointStripped | escape }}"
+							data-action="toggle-drawer"
+							data-drawer-id="{{ block.id }}-drawer"
+							aria-label="{{ productUniqueSellingPointStripped | escape }}"
+						>
+					{%- endfor -%}
+					<p>{{ block.settings.unique_selling_points | replace: ', and ', ' and ' }}</p>
+				{%- endif -%}
+	        </div>
+
+		  	{%- capture additionalDrawerHtml -%}
+			  	{%- render 'additional-drawer',
+					drawerID: block.id,
+					removePadding: block.settings.remove_padding,
+					drawerTitle: block.settings.title,
+					pageContent: block.settings.page,
+					standardContent: block.settings.content,
+					htmlContent: block.settings.html_content,
+					uspContent: block.settings.unique_selling_points,
+					uspContentCopy: block.settings.unique_selling_points_copy,
+					additionalClass: 'UniqueSellingPoint_Drawer'
+				-%}
+			{%- endcapture -%}
+			{%- assign additionalDrawersHtml = additionalDrawersHtml | append: additionalDrawerHtml -%}
+
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'buy_buttons' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        {%- if block.settings.show_payment_button == false or product.selling_plan_groups.size > 0 -%}
+          {%- assign use_primary_button = true -%}
+        {%- else -%}
+          {%- assign use_primary_button = false -%}
+        {%- endif -%}
+
+			<div class="ProductForm__BuyButtons hidden-pocket" {{ block.shopify_attributes }}>
+          {%- if block.settings.show_payment_button and product.selected_or_first_available_variant.available == false -%}
+            <style>
+              #shopify-section-{{ section.id }} .shopify-payment-button {
+                display: none;
+              }
+            </style>
+          {%- endif -%}
+		  {%- if block.settings.show_book_a_service -%}
+			{%- assign blockDrawerId = block.id | append: '-button-1' -%}
+        {% assign isBookService = true %}
+        {% assign titleBook = block.settings.title_book %}
+        {% assign typeBook = block.settings.button_type_book %}
+			<div class="{{blockDrawerId}} Button {% if block.settings.button_type_book == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type_book }} Button--full{% endif %}"
+				data-action="toggle-drawer" data-drawer-id="{{ blockDrawerId }}-drawer" aria-label="{{ block.settings.title_book }}">
+				<span>{{ block.settings.title_book }}</span>
+			</div>
+
+			{%- capture additionalDrawerHtml -%}
+				  {%- render 'additional-drawer',
+					drawerID: blockDrawerId,
+					removePadding: block.settings.remove_padding,
+					drawerTitle: block.settings.title_book,
+					pageContent: block.settings.page,
+					standardContent: block.settings.content,
+					htmlContent: block.settings.button_1_html_content,
+					uspContent: block.settings.unique_selling_points,
+					uspContentCopy: block.settings.unique_selling_points_copy,
+					additionalClass: ''
+				-%}
+			{%- endcapture -%}
+			{%- assign additionalDrawersHtml = additionalDrawersHtml | append: additionalDrawerHtml -%}
+		{%- else -%}
+          <button data-use-primary-button="{% if use_primary_button %}true{% else %}false{% endif %}" class="ProductForm__AddToCart ProductForm__AddToCart_Desktop Button {% if product.selected_or_first_available_variant.available and use_primary_button %}Button--primary{% else %}Button--secondary{% endif %} Button--full" {% if product.selected_or_first_available_variant.available and product.variants.size < 2 %}data-action="add-to-cart"{% else %}data-action="error-text"{% endif %}>
+            {%- if product.selected_or_first_available_variant.available -%}
+              <div class="AddToCartPriceContentWrapper">
+				  <span>{% if product.template_suffix == 'pre-order' %}{{ 'product.form.pre_order' | t }}{% else %}{{ 'product.form.add_to_cart' | t }}{% endif %}</span>
+	              {%- if block.settings.show_price_in_button -%}
+	                <span>
+						{% if pendant_multiple_block != blank or pendant_block != blank or product.price_varies or product.tags contains 'from' or product.tags contains 'From' or product.tags contains 'Template_Same Pair' %}
+							From {{ variant_price | money_with_currency | remove: '.00' }}
+						{% else %}
+							{{ variant_price | money_with_currency | remove: '.00' }}
+						{% endif %}
+					</span>
+	              {%- endif -%}
+			  </div>
+
+			  <span class="ErrorTextMessage"></span>
+            {%- else -%}
+              {{- 'product.form.sold_out' | t -}}
+            {%- endif -%}
+          </button>
+          {%- unless ignore_wislist -%}
+            <wishlist-button class="js-wishlist-button" product="{{ product | json | escape }}" product-bi-line="{{ product.metafields.custom.product_bi_line.value }}" properties="" variant-selected="" variant-selected-id="" template-suffix="{{ product_template_suffix }}" disabled="disabled" error-message=""></wishlist-button>
+          {%- endunless -%}
+		{%- endif -%}
+          {%- if block.settings.show_payment_button and product.template_suffix != 'pre-order' -%}
+            {{ form | payment_button }}
+          {%- endif -%}
+          {%- unless ignore_wislist -%}
+            <wishlist-button class="js-wishlist-button" product="{{ product | json | escape }}" product-bi-line="{{ product.metafields.custom.product_bi_line.value }}" properties="" variant-selected="" variant-selected-id="" template-suffix="{{ product_template_suffix }}" disabled="disabled" error-message=""></wishlist-button>
+          {%- endunless -%}
+        </div>
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'text' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        {%- if block.settings.title != blank or block.settings.text != blank -%}
+          <div class="ProductMeta__Text" {{ block.shopify_attributes }}>
+			{%- if block.settings.title  != blank -%}
+              <span class="Heading u-h6">{{ block.settings.title | escape }}</span>
+			{%- endif -%}
+			{%- if block.settings.text  != blank -%}
+              <p>{{- block.settings.text -}}</p>
+			{%- endif -%}
+          </div>
+        {%- endif -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'rich_text' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+          {%- if block.settings.rich_text != blank -%}
+            <div class="ProductMeta__Text" {{ block.shopify_attributes }}>
+  			{%- if block.settings.title  != blank -%}
+                <span class="Heading u-h6">{{ block.settings.title | escape }}</span>
+  			{%- endif -%}
+  			{{- block.settings.rich_text -}}
+            </div>
+          {%- endif -%}
+  		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+
+    {%- when 'liquid' -%}
+      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
+      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
+      {%- capture blockContent -%}
+        {%- if block.settings.liquid != blank -%}
+          <div class="ProductMeta__Text js-product-meta-text" {{ block.shopify_attributes }}>
+            {{ block.settings.liquid }}
+          </div>
+        {%- endif -%}
+		{%- endcapture -%}
+
+      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
+        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topLeft' -%}
+        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'topRight' -%}
+        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomLeft' -%}
+        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
+      {%- elsif block.settings.block_position == 'bottomRight' -%}
+        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
+      {%- endif -%}
+  {%- endcase -%}
+{%- endfor -%}
+
+{% if product.type == 'Gift Card' %}
+  <script src='{{ 'custom-gift-card.js' | asset_url }}' defer></script>
+  <link type='text/css' rel='stylesheet' href='{{ 'custom-gift-card.css' | asset_url }}'>
+{% endif %}
+
+<script>
+  // To power the recently viewed products section, we save the ID of the product inside the local storage
+  (() => {
+    let items = JSON.parse(localStorage.getItem('recentlyViewedProducts') || '[]');
+
+    // We check if the current product already exists, and if it does not, we add it at the start
+    if (!items.includes({{ product.id }})) {
+      items.unshift({{ product.id }});
+    }
+
+    // Then, we save the current product into the local storage, by keeping only the 8 most recent
+    try {
+      localStorage.setItem('recentlyViewedProducts', JSON.stringify(items.slice(0, 8)));
+    } catch (error) {
+      // Do nothing, this may happen in Safari in incognito mode
+    }
+  })();
+</script>
+
+<section
+  class='Product Product--{{ section.settings.image_size }} {% if product.variants.size < 2 %}{% unless template.suffix contains 'cartilage-builder' %}SingleVariant{% endunless %}{% endif %}'
+  data-section-id='{{ section.id }}'
+  data-section-type='product'
+  data-section-settings='{{ section_settings }}'
+>
+  <div class='Product__Wrapper'>
+    {%- capture action_list_items -%}
+      {%- if section.settings.enable_image_zoom -%}
+        <div class="Product__ActionItem hidden-lap-and-up">
+          <button class="RoundButton RoundButton--small RoundButton--flat" aria-label="{{ 'product.slideshow.zoom' | t | escape }}" data-action="open-product-zoom">{% render 'icon' with 'plus' %}</button>
+        </div>
+      {%- endif -%}
+
+      {%- if share_buttons_block != blank -%}
+        <div class="Product__ActionItem hidden-lap-and-up">
+          <button class="RoundButton RoundButton--small RoundButton--flat" data-action="toggle-social-share" data-animate-bottom aria-expanded="false">
+            <span class="RoundButton__PrimaryState">{% render 'icon' with 'share' %}</span>
+            <span class="RoundButton__SecondaryState">{% render 'icon' with 'close' %}</span>
+          </button>
+
+          {%- assign share_url = shop.url | append: product.url -%}
+          {%- assign twitter_text = product.title -%}
+          {%- assign pinterest_description = product.description | strip_html | truncatewords: 15 | url_param_escape -%}
+          {%- assign pinterest_image = product.featured_media | img_url: '1024x' | prepend: 'https:' -%}
+
+          <div class="Product__ShareList" aria-hidden="true">
+            <a class="Product__ShareItem" href="https://www.facebook.com/sharer.php?u={{ share_url }}" target="_blank" rel="noopener">{%- render 'icon' with 'facebook' -%} Facebook</a>
+            <a class="Product__ShareItem" href="https://pinterest.com/pin/create/button/?url={{ share_url }}{% if pinterest_image != blank %}&media={{ pinterest_image }}{% endif %}&description={{ pinterest_description }}" target="_blank" rel="noopener">{%- render 'icon' with 'pinterest' -%} Pinterest</a>
+            <a class="Product__ShareItem" href="https://twitter.com/share?{% if twitter_text != blank %}text={{twitter_text}}&{% endif %}url={{ share_url }}" target="_blank" rel="noopener">{%- render 'icon' with 'twitter' -%} Twitter</a>
+          </div>
+        </div>
+      {%- endif -%}
+    {%- endcapture -%}
+
+    {%- comment -%}
+      --------------------------------------------------------------------------------------------------------------------
+      PRODUCT GALLERY
+      --------------------------------------------------------------------------------------------------------------------
+    {%- endcomment -%}
+
+    {%- assign initial_media_id = product.featured_media.id -%}
+    {%- assign initial_media_index = 0 -%}
+    {%- assign media_count = 0 -%}
+
+    {%- capture slideshow_media -%}
+
+      {%- if view_type == 'model-view' or settings.spa_product_item_animation == 'fade_forward' or product.template_suffix == 'personalised' -%}
+	  	{%- assign mediaStack = product.media -%}
+      {%- else -%}
+	  	{%- assign mediaStack = product.media | reverse -%}
+      {%- endif -%}
+
+      {%- for media in mediaStack -%}
+
+	  	{%- assign mediaAlt = media.alt | downcase -%}
+        {%- if mediaAlt == 'featured' or mediaAlt == 'featured mobile' or mediaAlt contains 'campaignImage' or mediaAlt contains 'hidden' -%}
+			{%- continue -%}
+        {%- endif -%}
+
+        {%- if forloop.first -%}
+          {%- assign initial_media_index = media_count -%}
+          {%- assign initial_media_id = media.id -%}
+        {%- endif -%}
+
+        {%- capture supported_sizes -%}{%- render 'image-size', sizes: '200,400,600,700,800,900,1000,1200,1400,1600', image: media -%}{%- endcapture -%}
+		{%- assign zIndex = product.media.size | minus: forloop.index -%}
+
+		{%- case media.media_type -%}
+          {%- when 'image' -%}
+            <div id="Media{{ media.id }}" tabindex="0" class="Product__SlideItem Product__SlideItem--image Carousel__Cell {% if forloop.index0 < 1 %}StackEnabled{% endif %} {% if initial_media_id == media.id %}is-selected{% endif %}" data-media-type="image" data-media-id="{{ media.id }}" data-media-position="{{ media.position }}" data-image-media-position="{% increment image_position %}" style="z-index: {{ zIndex }};">
+							{%- if product.template_suffix == 'personalised' -%}
+								<div class="PersonalisationPreview"></div>
+							{%- endif -%}
+						<div class="AspectRatio AspectRatio--withFallback" {% if forloop.first %}data-transition-target{% endif %} style="{% unless section.settings.stack_images %}padding-bottom: {{ 100.0 | divided_by: media.aspect_ratio }}%;{% endunless %} --aspect-ratio: {{ media.aspect_ratio }};">
+						{% assign image_url = media | img_url: '1x1' | replace: '_1x1.', '_{width}x.' %}
+
+				{%- if forloop.first -%}
+					<picture>
+						<source srcset="{{ media | img_url: '1400x', format: 'pjpg' }}" media="(min-width: 641px)">
+						<img src="{{ media | img_url: '1000x', format: 'pjpg' }}" data-expand="-100" alt="{{ media.alt | escape }}" data-max-width="{{ media.width }}" data-max-height="{{ media.height }}" data-original-src="{{ media | img_url: 'master' }}">
+					</picture>
+				{%- else -%}
+					<img class="Image--lazyLoad Image--fadeIn" data-src="{{ image_url }}" data-widths="[{{ supported_sizes }}]" data-sizes="auto" data-expand="-100" alt="{{ media.alt | escape }}" data-max-width="{{ media.width }}" data-max-height="{{ media.height }}" data-original-src="{{ media | img_url: 'master' }}">
+				{%- endif -%}
+
+                <noscript>
+                  <img src="{{ media | img_url: '800x' }}" alt="{{ media.alt | escape }}">
+                </noscript>
+              </div>
+            </div>
+
+          {%- when 'external_video' -%}
+            <div id="Media{{ media.id }}" tabindex="-1" class="Product__SlideItem Product__SlideItem--video Carousel__Cell {% if initial_media_id == media.id %}is-selected{% endif %}" data-media-type="external_video" data-media-id="{{ media.id }}" data-media-position="{{ media.position }}" data-video-host="{{ media.host | escape }}" data-video-id="{{ media.external_id | escape }}">
+              <div class="Image--lazyLoad Image--fadeIn" data-expand="-100">
+                <div class="VideoWrapper">
+                  {{- media | external_video_tag: image_size: '1024x' -}}
+                </div>
+              </div>
+            </div>
+
+          {%- when 'video' -%}
+            <div id="Media{{ media.id }}" tabindex="-1" class="Product__SlideItem Product__SlideItem--video Carousel__Cell {% if forloop.index0 < 1 %}StackEnabled{% endif %} {% if initial_media_id == media.id %}is-selected{% endif %}" data-media-type="video" data-media-id="{{ media.id }}" data-media-position="{{ media.position }}" style="z-index: {{ zIndex }};">
+              <div class="Image--lazyLoad Image--fadeIn" data-expand="-100">
+                <div class="VideoWrapper VideoWrapper--native" style="padding-bottom: {{ 100.0 | divided_by: media.aspect_ratio }}%">
+                  {{- media | video_tag: image_size: '1024x', autoplay: true, loop: true, muted: true, controls: false -}}
+                </div>
+              </div>
+            </div>
+
+          {%- when 'model' -%}
+            <div id="Media{{ media.id }}" tabindex="-1" class="Product__SlideItem Product__SlideItem--model Carousel__Cell {% if initial_media_id == media.id %}is-selected{% endif %}" data-media-type="model" data-media-id="{{ media.id }}" data-media-position="{{ media.position }}">
+              <div class="Image--lazyLoad Image--fadeIn" data-expand="-100">
+                <div class="ModelWrapper">
+                  {{- media | model_viewer_tag: image_size: '1024x', reveal: 'interaction', toggleable: true -}}
+                </div>
+              </div>
+            </div>
+        {%- endcase -%}
+
+        {%- assign media_count = media_count | plus: 1 -%}
+      {%- endfor -%}
+    {%- endcapture -%}
+
+    {%- if product.media.size > 0 -%}
+      <div class='Product__Gallery {% if section.settings.enable_image_zoom %}Product__Slideshow--zoomable{% endif %} {% if section.settings.stack_images %}Product__Gallery--stack{% endif %} {% if section.settings.stack_images_mobile %}Product__Gallery--stack-mobile{% endif %} {% if section.settings.show_thumbnails and media_count > 1 %}Product__Gallery--withThumbnails{% else %}Product__Gallery--withDots{% endif %}'>
+        {%- assign productScrollBarHeight = 100 | divided_by: product.media.size | append: '%' -%}
+        <div class='Product__Gallery_Scrollbar_Container' style='--product-scrollbar-height:{{ productScrollBarHeight }};'>
+          <div class='Product__Gallery_Scrollbar'></div>
+        </div>
+        <span id='ProductGallery' class='Anchor'></span>
+
+        {%- if action_list_items != blank -%}
+          <div class='Product__ActionList hidden-pocket hidden-lap-and-up {% if product.media[initial_media_index].media_type != 'image' %}is-hidden{% endif %}'>
+            {{ action_list_items }}
+          </div>
+        {%- endif -%}
+
+        {%- capture slideshow_nav -%}
+          {%- if media_count > 1 -%}
+            {%- if section.settings.show_thumbnails -%}
+              <div class="Product__SlideshowNav Product__SlideshowNav--thumbnails">
+                <div class="Product__SlideshowNavScroller">
+                  {%- for media in mediaStack -%}
+                    {%- capture nav_item_badge -%}
+                      {%- case media.media_type -%}
+                        {%- when 'model' -%}
+                          <span class="Product__SlideshowNavBadge">{% render 'icon', icon: 'media-model-badge' %}</span>
+
+                        {%- when 'video' or 'external_video' -%}
+                          <span class="Product__SlideshowNavBadge">{% render 'icon', icon: 'media-video-badge' %}</span>
+                      {%- endcase -%}
+                    {%- endcapture -%}
+
+                    {%- if section.settings.stack_images -%}
+                      <a href="#Media{{ media.id }}" data-offset="-25" data-focus-on-click data-media-id="{{ media.id }}" class="Product__SlideshowNavImage AspectRatio {% if forloop.first %}is-selected{% endif %}" style="--aspect-ratio: {{ media.preview_image.aspect_ratio }}">
+                        <img src="{{ media | img_url: '160x' }}" alt="{{ media.alt | escape }}">
+                        {{- nav_item_badge -}}
+                      </a>
+                    {%- else -%}
+                      <a href="{{ media | img_url: '1024x' }}" data-media-id="{{ media.id }}" class="Product__SlideshowNavImage AspectRatio {% if media.id == initial_media_id %}is-selected{% endif %}" style="--aspect-ratio: {{ media.preview_image.aspect_ratio }}">
+                        <img src="{{ media | img_url: '160x' }}" alt="{{ media.alt | escape }}">
+                        {{- nav_item_badge -}}
+                      </a>
+                    {%- endif -%}
+                  {%- endfor -%}
+                </div>
+              </div>
+            {%- endif -%}
+
+          {%- endif -%}
+        {%- endcapture -%}
+
+        {%- if section.settings.stack_images -%}
+          {{- slideshow_nav -}}
+        {%- endif -%}
+
+        {%- capture flickity_options -%}
+        {
+          "prevNextButtons": false,
+          "pageDots": false,
+          "adaptiveHeight": true,
+          "watchCSS": true,
+          "dragThreshold": 8,
+          "initialIndex": {{ initial_media_index }},
+          "arrowShape": {"x0": 20, "x1": 60, "y1": 40, "x2": 60, "y2": 35, "x3": 25}
+        }
+        {%- endcapture -%}
+
+        <div class='Product__Slideshow Carousel' data-flickity-config='{{ flickity_options }}'>
+          {{ slideshow_media }}
+        </div>
+
+        {%- comment -%}Add the "view in your space" button, which allows to show the product in customer's environment (if the device supports it){%- endcomment -%}
+        {%- assign first_3d_model = product.media | where: 'media_type', 'model' | first -%}
+
+        {%- if first_3d_model -%}
+          <button
+            class='Product__ViewInSpace Button Button--full'
+            data-shopify-xr
+            data-shopify-model3d-id='{{ first_3d_model.id }}'
+            data-shopify-model3d-default-id='{{ first_3d_model.id }}'
+            data-shopify-title='{{ product.title | escape }}'
+            data-shopify-xr-hidden
+          >
+            {%- render 'icon', icon: 'media-view-in-space' -%}
+            {{- 'product.general.view_in_space' | t -}}
+          </button>
+        {%- endif -%}
+
+        {%- if media_count > 1 -%}
+          {%- comment -%}
+            IMPLEMENTATION NOTE: The reason we create ourselves our own UI instead of relying of the built-in feature of Flickity is that,
+            since the media API, Shopify requires to add arrows next to the dot. Unfortunately this layout is not
+            achievable easily using Flickity options only, so we have to run our own
+          {%- endcomment -%}
+
+          <div class='Product__SlideshowMobileNav {% if section.settings.stack_images or section.settings.show_thumbnails %}hidden-lap-and-up{% endif %}'>
+            <div class='flickity-page-dots'>
+              {%- for i in (1..media_count) -%}
+                {% assign dataIndex = 0 %}
+                {%- if view_type == 'flatlay-view' -%}
+                  {%- assign dataIndex = media_count | minus: forloop.index0 -%}
+                {%- else -%}
+                  {%- assign dataIndex = forloop.index0 -%}
+                {%- endif -%}
+                <button
+                  type='button'
+                  aria-label='{{ 'product.slideshow.go_to_image' | t: i: i | escape }}'
+                  class='dot {% if forloop.index0 == initial_media_index %}is-selected{% endif %}'
+                  data-index='{{ dataIndex }}'
+                ></button>
+              {%- endfor -%}
+            </div>
+          </div>
+        {%- endif -%}
+
+        {%- unless section.settings.stack_images -%}
+          {{- slideshow_nav -}}
+        {%- endunless -%}
+      </div>
+    {%- endif -%}
+
+    <div class='Product__InfoWrapper Left'>
+      <div class='Product__Info {% if media_count == 0 %}Product__Info--noGallery{% endif %}'>
+        <div class='Container'>
+          <div class='Product__Info_Top {% if section.settings.align_last_item_end_top_left %}PushLastEnd{% endif %}'>
+            {{ topLeftHtml }}
+          </div>
+          <div class='Product__Info_Bottom {% if section.settings.align_last_item_end_bottom_left %}PushLastEnd{% endif %}'>
+            {{ bottomLeftHtml }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class='Product__InfoWrapper Right {% if product.type == 'Gift Card' %}gift-card-right-details{% endif %}'>
+      <div class='Product__Info {% if media_count == 0 %}Product__Info--noGallery{% endif %}'>
+        <div class='Container'>
+          <div
+            class='Product__Info_Top {% if section.settings.align_last_item_end_top_right %}PushLastEnd{% endif %}'
+            {% if product.type == 'Gift Card' %}
+              data-is-gift-card='true'
+            {% endif %}
+          >
+            {%- form 'product', product, class: 'ProductForm' -%}
+              {%- render 'product-data', product: product, productionTime: productionTime -%}
+              {{ topRightHtml }}
+
+              {%- if topRightOptionWrapper != blank
+                and product.tags contains 'Template_Same Pair'
+                or product.variants.size > 1
+                or template.suffix contains 'cartilage-builder'
+                or product.tags contains 'locket'
+              -%}
+                <script>
+                  // setting a window boolean here which determines if the JS in theme.js should set a display class or not.
+                  window.theme.productHasOptions = true
+                </script>
+                <div class='HiddenOptionWrapper__Wrapper'>
+                  <div class='ProductForm__SelectOptions'>
+                    <span class='Heading u-h6' data-action='expand-options'>Select Options</span>
+                  </div>
+                  <div class='HiddenOptionWrapper' style='height: 0;opacity: 0;visibility: hidden;'>
+                    {{ topRightOptionWrapper }}
+                  </div>
+                </div>
+              {%- else -%}
+                {{ topRightOptionWrapper }}
+              {%- endif -%}
+            {%- endform -%}
+          </div>
+          <div class='Product__Info_Bottom {% if section.settings.align_last_item_end_bottom_right %}PushLastEnd{% endif %}'>
+            {{ bottomRightHtml }}
+
+            <div class='hidden-desktop-widescreen'>
+              {{ bottomLeftHtml }}
+            </div>
+          </div>
+
+          {%- unless has_ouputted_variant_selector -%}
+            {%- comment -%}If for any reason the merchant has removed the variant selector block, we still output the ID here{%- endcomment -%}
+            <input type='hidden' name='id' value='{{ product.selected_or_first_available_variant.id }}'>
+          {%- endunless -%}
+
+          {%- if section.settings.stack_images and product_aside != blank and media_count > 0 -%}
+            <div class='Product__QuickNav hidden-pocket'>
+              <div class='Product__QuickNavWrapper'>
+                <a href='#ProductAside' class='Heading Link Link--secondary u-h7'>
+                  {{- 'product.form.view_info' | t }}
+                  {% render 'icon' with 'select-arrow-right' -%}
+                </a>
+                <a href='#ProductGallery' class='Heading Link Link--secondary u-h7'>
+                  {{- 'product.form.view_images' | t }}
+                  {% render 'icon' with 'select-arrow-right' -%}
+                </a>
+              </div>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+
+    <div class='MobileAddToCart hidden-lap-and-up {% if product.type == 'Gift Card' %}gift-card-unset{% endif %}'>
+      <div class='Container'>
+        <div class='MobileAddToCart_Header'>
+          <div class='optionsSelectExpander-1' data-action='close-options'></div>
+          <div class='optionsSelectExpander-2'></div>
+          <div id='spacer'></div>
+
+          {%- unless archive_sale and meta_block.settings.hide_final_sale -%}
+            {%- unless meta_block.settings.show_final_sale and archive_sale == blank -%}
+              {%- render 'product-meta', form: form, block: meta_block, product: product, mobile: true -%}
+            {%- endunless -%}
+          {%- endunless -%}
+        </div>
+        <div class='MobileAddToCart_Body'>
+          <div class='MobileFormWrapper'></div>
+        </div>
+        <div class='MobileAddToCart_Footer'>
+          {%- if buy_buttons_block != blank -%}
+            {%- unless archive_sale and buy_buttons_block.settings.hide_final_sale -%}
+              {%- unless buy_buttons_block.settings.show_final_sale and archive_sale == blank -%}
+                {%- if buy_buttons_block.settings.show_payment_button == false or product.selling_plan_groups.size > 0 -%}
+                  {%- assign use_primary_button = true -%}
+                {%- else -%}
+                  {%- assign use_primary_button = false -%}
+                {%- endif -%}
+                <div class='ProductForm__BuyButtons' {{ block.shopify_attributes }}>
+                  {%- if buy_buttons_block.settings.show_payment_button and product.selected_or_first_available_variant.available == false -%}
+                    <style>
+                      #shopify-section-{{ section.id }} .shopify-payment-button {
+                        display: none;
+                      }
+                    </style>
+                  {%- endif -%}
+                  {%- if isBookService -%}
+                    <div
+                      class='trigger-book-service Button {% if block.settings.button_type_book == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ typeBook }} Button--full{% endif %}'
+                      data-action='toggle-drawer'
+                      aria-label='{{ titleBook }}'
+                    >
+                      <span>{{ titleBook }}</span>
+                    </div>
+                    <script>
+                      // Trigger button on desktop view
+                      $('.trigger-book-service').click(() => {
+                        $('.buy_buttons-button-1[data-drawer-id="{{ blockDrawerId }}-drawer"]').click()
+                      })
+                    </script>
+                  {%- else -%}
+                    <button
+                      type='submit'
+                      data-use-primary-button='{% if use_primary_button %}true{% else %}false{% endif %}'
+                      class='ProductForm__AddToCart ProductForm__AddToCart_Mobile Button {% if product.selected_or_first_available_variant.available and use_primary_button %}Button--primary{% else %}Button--secondary{% endif %} Button--full'
+                      {% unless product.selected_or_first_available_variant.available == false
+                        and product.variants.size >= 2
+                        and product.tags contains 'Template_Same Pair'
+                      %}
+                        data-action='error-text'
+                      {% else %}
+                        data-action='add-to-cart'
+                      {% endunless %}
+                    >
+                      {%- if product.selected_or_first_available_variant.available -%}
+                        <div class='AddToCartPriceContentWrapper'>
+                          <span>
+                            {%- if product.template_suffix == 'pre-order' -%}
+                              {{- 'product.form.pre_order' | t -}}
+                            {%- else -%}
+                              {{- 'product.form.add_to_cart' | t -}}
+                            {%- endif -%}
+                          </span>
+                          {%- if buy_buttons_block.settings.show_price_in_button -%}
+                            <span>
+                              {% if pendant_multiple_block != blank
+                                or pendant_block != blank
+                                or product.price_varies
+                                or product.tags contains 'from'
+                                or product.tags contains 'From'
+                                or product.tags contains 'Template_Same Pair'
+                              %}
+                                From {{ variant_price | money_with_currency | remove: '.00' }}
+                              {% else %}
+                                {{ variant_price | money_with_currency | remove: '.00' }}
+                              {% endif %}
+                            </span>
+                          {%- endif -%}
+                        </div>
+
+                        <span class='ErrorTextMessage'></span>
+                      {%- else -%}
+                        {{- 'product.form.sold_out' | t -}}
+                      {%- endif -%}
+                    </button>
+                  {% endif %}
+
+                  {%- unless ignore_wislist -%}
+                    <wishlist-button class="js-wishlist-button-mobile" product="{{ product | json | escape }}" product-bi-line="{{ product.metafields.custom.product_bi_line.value }}" variant-selected="" variant-selected-id="" template-suffix="{{ product_template_suffix }}" disabled="disabled" error-message=""></wishlist-button>
+                  {%- endunless -%}
+
+                  {%- if block.settings.show_payment_button and product.template_suffix != 'pre-order' -%}
+                    {{ form | payment_button }}
+                  {%- endif -%}
+                </div>
+              {%- endunless -%}
+            {%- endunless -%}
+          {%- elsif enquire_block != blank -%}
+            {%- unless archive_sale and enquire_block.settings.hide_final_sale -%}
+              {%- unless enquire_block.settings.show_final_sale and archive_sale == blank -%}
+                {%- if enquire_block.settings.title != blank and enquire_block.settings.content != blank or enquire_block.settings.page != blank -%}
+                  <div
+                    class='{% if enquire_block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ enquire_block.settings.button_type }} Button--full{% endif %}'
+                    data-action='toggle-drawer'
+                    data-drawer-id='enquire-drawer'
+                    aria-label='{{ enquire_block.settings.title }}'
+                  >
+                    <span>{{ enquire_block.settings.title }}</span>
+                  </div>
+                  {%- unless ignore_wislist -%}
+                    <wishlist-button class="js-wishlist-button-mobile" product="{{ product | json | escape }}" product-bi-line="{{ product.metafields.custom.product_bi_line.value }}" variant-selected="" variant-selected-id="" template-suffix="{{ product_template_suffix }}" disabled="disabled" error-message=""></wishlist-button>
+                  {%- endunless -%}
+                {%- endif -%}
+              {%- endunless -%}
+            {%- endunless -%}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </div>
+  {%- if settings.klaviyo_api_key != blank and settings.klaviyo_enable_bis -%}
+    {% render 'klaviyo-product' %}
+  {%- endif -%}
+
+  {%- if find_in_store_block != blank -%}
+    {%- render 'find-in-store-drawer', find_in_store_block: find_in_store_block -%}
+  {%- endif -%}
+
+  {%- if enquire_block != blank -%}
+    {%- if enquire_block.settings.title != blank and enquire_block.settings.content != blank or enquire_block.settings.page != blank -%}
+      {%- render 'enquire-drawer', enquire_block: enquire_block -%}
+    {%- endif -%}
+  {%- endif -%}
+
+  {%- if additionalDrawersHtml != blank -%}
+    {{ additionalDrawersHtml }}
+  {%- endif -%}
+</section>
+
+{%- comment -%}
+  --------------------------------------------------------------------------------------------------------------------
+  PHOTO SWIPE
+
+  This is the root container for the zoom functionality. Must not be removed, as order element is important.
+  --------------------------------------------------------------------------------------------------------------------
+{%- endcomment -%}
+
+{%- if section.settings.enable_image_zoom -%}
+  <div class='pswp' tabindex='-1' role='dialog' aria-hidden='true'>
+    <!-- Background of PhotoSwipe -->
+    <div class='pswp__bg'></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class='pswp__scroll-wrap'>
+      <!-- Container that holds slides. Do not remove as content is dynamically added -->
+      <div class='pswp__container'>
+        <div class='pswp__item'></div>
+        <div class='pswp__item'></div>
+        <div class='pswp__item'></div>
+      </div>
+
+      <!-- Main UI bar -->
+      <div class='pswp__ui pswp__ui--hidden'>
+        <button class='pswp__button pswp__button--prev RoundButton' data-animate-left title='{{ 'product.slideshow.previous' | t }}'>
+          {% render 'icon' with 'arrow-left' %}
+        </button>
+        <button class='pswp__button pswp__button--close RoundButton RoundButton--large' data-animate-bottom title='{{ 'product.slideshow.close' | t }}'>
+          {% render 'icon' with 'close' %}
+        </button>
+        <button class='pswp__button pswp__button--next RoundButton' data-animate-right title='{{ 'product.slideshow.next' | t }}'>
+          {% render 'icon' with 'arrow-right' %}
+        </button>
+      </div>
+    </div>
+  </div>
+{%- endif -%}
+
+<script>
+  window.ShopifyXR=window.ShopifyXR||function(){(ShopifyXR.q=ShopifyXR.q||[]).push(arguments)};
+  ShopifyXR('addModels', {{ product.media | where: 'media_type', 'model' | json }});
+</script>
+
+{%- if product.tags contains 'locket' -%}
+  <script id='uploaderyCustom'>
+    function uploaderyLoaded() {
+      window.Shoppad.$(function () {
+        window.Shoppad.$(document).on('uploadSuccess', 'form[data-uploadery]', function (e) {
+          var $uploaderyActiveField = window.Shoppad.$(e.target)
+          $uploaderyActiveField.addClass('upload-complete')
+        })
+      })
+    }
+  </script>
+  <script src='//d1liekpayvooaz.cloudfront.net/apps/uploadery/uploadery.js?shop={{shop.permanent_domain}}' defer onload='uploaderyLoaded()'></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product page",
+  "blocks": [
+    {
+      "type": "product_meta",
+      "name": "Product meta",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_price",
+          "label": "Show price",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_price_final_sale",
+          "label": "Show price for final sale",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_vendor",
+          "label": "Show vendor",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_sku",
+          "label": "Show SKU",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "show_taxes_included",
+          "label": "Show price taxes notice",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "variant_selector",
+      "name": "Variant selector",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "select",
+          "id": "selector_mode",
+          "label": "Selector type",
+          "options": [
+            {
+              "value": "block",
+              "label": "Block"
+            },
+            {
+              "value": "dropdown",
+              "label": "Dropdown"
+            }
+          ],
+          "default": "dropdown"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_block_accordion",
+          "label": "Show blocks as accordions",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_color_swatch",
+          "label": "Show color swatch",
+          "default": false,
+          "info": "Some colors appear white? [Learn more](http://support.maestrooo.com/article/80-product-uploading-custom-color-for-color-swatch)."
+        },
+        {
+          "type": "checkbox",
+          "id": "show_color_carousel",
+          "label": "Show color carousel",
+          "info": "A pop-up selector with variant images for choosing colors. Only enables when color swatch is disabled.",
+          "default": false
+        },
+        {
+          "type": "page",
+          "id": "size_chart",
+          "label": "Size chart",
+          "info": "Show along option named Size."
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "pendant_selector",
+      "name": "Pendant selector",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Pendants"
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "select",
+          "id": "selector_mode",
+          "label": "Selector type",
+          "options": [
+            {
+              "value": "block",
+              "label": "Block"
+            },
+            {
+              "value": "dropdown",
+              "label": "Dropdown"
+            }
+          ],
+          "default": "dropdown"
+        },
+        {
+          "type": "select",
+          "id": "swatch_mode",
+          "label": "Swatch mode",
+          "options": [
+            {
+              "value": "text",
+              "label": "Text"
+            },
+            {
+              "value": "image",
+              "label": "Image"
+            }
+          ],
+          "default": "text"
+        },
+        {
+          "type": "text",
+          "id": "metafield",
+          "label": "Metafield for Labels"
+        },
+        {
+          "type": "checkbox",
+          "id": "truncate_matafield",
+          "label": "Truncate metafield values for swatch image labels.",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "enable_tooltip",
+          "label": "Enable tooltip",
+          "default": true
+        },
+        {
+          "type": "product",
+          "id": "core_product_single_1",
+          "label": "Core Product - Single Yellow Gold"
+        },
+        {
+          "type": "product",
+          "id": "core_product_single_2",
+          "label": "Core Product - Single White Gold"
+        },
+        {
+          "type": "product",
+          "id": "core_product_multi_1",
+          "label": "Core Product - Multi Yellow Gold"
+        },
+        {
+          "type": "product",
+          "id": "core_product_multi_2",
+          "label": "Core Product - Multi White Gold"
+        },
+        {
+          "type": "collection",
+          "id": "pendant_collection",
+          "label": "Pendant collection"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_block_accordion",
+          "label": "Show blocks as accordions",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_color_swatch",
+          "label": "Show color swatch",
+          "default": false,
+          "info": "Some colors appear white? [Learn more](http://support.maestrooo.com/article/80-product-uploading-custom-color-for-color-swatch)."
+        },
+        {
+          "type": "checkbox",
+          "id": "show_color_carousel",
+          "label": "Show color carousel",
+          "info": "A pop-up selector with variant images for choosing colors. Only enables when color swatch is disabled.",
+          "default": false
+        },
+        {
+          "type": "page",
+          "id": "size_chart",
+          "label": "Size chart",
+          "info": "Show along option named Size."
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "range",
+          "id": "pendant_count",
+          "label": "Number of pendants",
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "default": 6
+        }
+      ]
+    },
+    {
+      "type": "pendant_multiple_selector",
+      "name": "Pendant multiple selector",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Pendants"
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRightOptionWrapper"
+        },
+        {
+          "type": "select",
+          "id": "selector_mode",
+          "label": "Selector type",
+          "options": [
+            {
+              "value": "block",
+              "label": "Block"
+            },
+            {
+              "value": "dropdown",
+              "label": "Dropdown"
+            }
+          ],
+          "default": "block"
+        },
+        {
+          "type": "text",
+          "id": "metafield",
+          "label": "Metafield for Labels"
+        },
+        {
+          "type": "checkbox",
+          "id": "truncate_matafield",
+          "label": "Truncate metafield values for swatch iamge labels.",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "enable_tooltip",
+          "label": "Enable tooltip",
+          "default": true
+        },
+        {
+          "type": "product",
+          "id": "single_letter_yellow",
+          "label": "Single letter Yellow Gold"
+        },
+        {
+          "type": "product",
+          "id": "single_letter_white",
+          "label": "Single letter White Gold"
+        },
+        {
+          "type": "product",
+          "id": "single_stone_yellow",
+          "label": "Single stone Yellow Gold"
+        },
+        {
+          "type": "product",
+          "id": "single_stone_white",
+          "label": "Single stone White Gold"
+        },
+        {
+          "type": "collection",
+          "id": "pendant_letter_collection",
+          "label": "Pendant letters collection"
+        },
+        {
+          "type": "collection",
+          "id": "pendant_stone_collection",
+          "label": "Pendant stones collection"
+        },
+        {
+          "type": "page",
+          "id": "size_chart",
+          "label": "Size chart",
+          "info": "Show along option named Size."
+        },
+        {
+          "type": "range",
+          "id": "pendant_count",
+          "label": "Number of pendants",
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "default": 6
+        }
+      ]
+    },
+    {
+      "type": "share_buttons",
+      "name": "Share buttons",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        }
+      ]
+    },
+    {
+      "type": "additional_button",
+      "name": "Button (Link)",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Secondary Button"
+        },
+        {
+          "type": "url",
+          "id": "button_link",
+          "label": "Link"
+        },
+        {
+          "type": "select",
+          "id": "button_type",
+          "label": "Button type",
+          "options": [
+            {
+              "value": "primary",
+              "label": "Primary"
+            },
+            {
+              "value": "secondary",
+              "label": "Secondary"
+            },
+            {
+              "value": "tertiary",
+              "label": "Tertiary"
+            },
+            {
+              "value": "underline",
+              "label": "Underline"
+            }
+          ],
+          "default": "secondary"
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "additional_drawer",
+      "name": "Button (Drawer)",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Secondary Button"
+        },
+        {
+          "type": "select",
+          "id": "button_type",
+          "label": "Button type",
+          "options": [
+            {
+              "value": "primary",
+              "label": "Primary"
+            },
+            {
+              "value": "secondary",
+              "label": "Secondary"
+            },
+            {
+              "value": "tertiary",
+              "label": "Tertiary"
+            },
+            {
+              "value": "underline",
+              "label": "Underline"
+            }
+          ],
+          "default": "secondary"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content"
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page"
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "buy_now_pay_later",
+      "name": "Buy now, pay later",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Buy Now, Pay Later"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content"
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page"
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "find_in_store",
+      "name": "Find in store button",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Find in Store"
+        },
+        {
+          "type": "text",
+          "id": "contact_store_button",
+          "label": "Contact Store Button",
+          "default": "Contact Store"
+        },
+        {
+          "type": "text",
+          "id": "availability_unavailable",
+          "label": "Title for unavailable products",
+          "default": "Currently unavailable in-store"
+        },
+        {
+          "type": "text",
+          "id": "availability_unavailable_description",
+          "label": "Text for unavailable products",
+          "default": "If you are enquiring to view product only, we encourage you to check alternative sizes or metal as the availability may differ."
+        },
+        {
+          "type": "text",
+          "id": "availability_singlestore",
+          "label": "Text for available products in more than one store",
+          "default": "Available in the following store:"
+        },
+        {
+          "type": "text",
+          "id": "availability_multi_store",
+          "label": "Text for available products in one store",
+          "default": "Available in the following stores:"
+        },
+        {
+          "type": "textarea",
+          "id": "placeholder",
+          "label": "Text area placeholder",
+          "default": "Your message"
+        },
+        {
+          "type": "textarea",
+          "id": "footer_copy",
+          "label": "Footer Copy",
+          "default": "Please note that store inventory changes frequently. Contact the store to learn about current availability and possible made to order requests."
+        },
+        {
+          "type": "select",
+          "id": "button_type",
+          "label": "Button type",
+          "options": [
+            {
+              "value": "primary",
+              "label": "Primary"
+            },
+            {
+              "value": "secondary",
+              "label": "Secondary"
+            },
+            {
+              "value": "tertiary",
+              "label": "Tertiary"
+            },
+            {
+              "value": "underline",
+              "label": "Underline"
+            }
+          ],
+          "default": "secondary"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content",
+          "info": "Content shown above input fields."
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page",
+          "info": "If specified, takes precedence over inline content."
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "enquire",
+      "name": "Enquire button",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Enquire"
+        },
+        {
+          "type": "textarea",
+          "id": "placeholder",
+          "label": "Text area placeholder",
+          "default": "Your message"
+        },
+        {
+          "type": "select",
+          "id": "button_type",
+          "label": "Button type",
+          "options": [
+            {
+              "value": "primary",
+              "label": "Primary"
+            },
+            {
+              "value": "secondary",
+              "label": "Secondary"
+            },
+            {
+              "value": "tertiary",
+              "label": "Tertiary"
+            },
+            {
+              "value": "underline",
+              "label": "Underline"
+            }
+          ],
+          "default": "secondary"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content",
+          "info": "Content shown above input fields."
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page",
+          "info": "If specified, takes precedence over inline content."
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "inventory",
+      "name": "Production time",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "range",
+          "id": "inventory_quantity_threshold",
+          "label": "Inventory quantity threshold",
+          "info": "Out of stock threshold.",
+          "min": 0,
+          "max": 50,
+          "step": 1,
+          "default": 0
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "unique_selling_point",
+      "name": "Product USPs",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Our Conscious"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content"
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page"
+        },
+        {
+          "type": "text",
+          "id": "unique_selling_points",
+          "label": "Unique selling points"
+        },
+        {
+          "type": "textarea",
+          "id": "unique_selling_points_copy",
+          "label": "Unique Selling Points Copy",
+          "info": "Enter a double pipe delimiated set of unique selling points. Split the title of the USP and copy with double underscore."
+        },
+        {
+          "type": "paragraph",
+          "content": "Images are added to 'Files' and handelized as png files. E.g. 'Solid Gold' would be uploaded as solid-gold.png."
+        },
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "buy_buttons",
+      "name": "Buy buttons",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_price_in_button",
+          "label": "Show price in add to cart button",
+          "default": false
+        },
+        {
+          "type": "text",
+          "id": "title_book",
+          "label": "Title",
+          "default": "Book a service"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_book_a_service",
+          "label": "Show book a service",
+          "default": false
+        },
+        {
+          "type": "select",
+          "id": "button_type_book",
+          "label": "Button type",
+          "options": [
+            {
+              "value": "primary",
+              "label": "Primary"
+            },
+            {
+              "value": "secondary",
+              "label": "Secondary"
+            },
+            {
+              "value": "tertiary",
+              "label": "Tertiary"
+            },
+            {
+              "value": "underline",
+              "label": "Underline"
+            }
+          ],
+          "default": "secondary"
+        },
+        {
+          "type": "html",
+          "id": "button_1_html_content",
+          "label": "HTML content.",
+          "default": "<p>Enter your HTML.</p>"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_payment_button",
+          "label": "Show dynamic checkout button",
+          "info": "Each customer will see their preferred payment method from those available on your store, such as PayPal or Apple Pay. [Learn more](https://help.shopify.com/manual/using-themes/change-the-layout/dynamic-checkout)",
+          "default": true
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "description",
+      "name": "Description",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_as_accordion",
+          "label": "Show as accordion",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "default_open",
+          "label": "Open by default",
+          "default": false,
+          "info": "Used when displayed as accordion."
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "liquid",
+      "name": "Liquid",
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "liquid",
+          "id": "liquid",
+          "label": "Liquid"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "quantity_selector",
+      "name": "Quantity selector",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_label",
+          "label": "Show label",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "rich_text",
+      "name": "Rich Text",
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "richtext",
+          "id": "rich_text",
+          "label": "Rich Text"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "@app"
+    },
+    {
+      "name": "Content",
+      "type": "content",
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "checkbox",
+          "id": "default_open",
+          "label": "Open by default",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "convert_to_list",
+          "label": "Convert new lines to list items",
+          "default": false
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "Content"
+        },
+        {
+          "type": "page",
+          "id": "page",
+          "label": "Content from page",
+          "info": "If specified, takes precedence over inline content."
+        },
+        {
+          "type": "textarea",
+          "id": "ignore_list",
+          "label": "Ignore list",
+          "info": "Enter a pipe delimiated set of terms to remove from content. This is used to remove terms when metafields are blank."
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "Buy it with",
+      "type": "buy_it_with",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Product"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading",
+          "default": "Buy it with"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "Seperator",
+      "type": "seperator",
+      "settings": [
+        {
+          "type": "select",
+          "id": "block_position",
+          "label": "Block position",
+          "options": [
+            {
+              "value": "topRight",
+              "label": "Top right"
+            },
+            {
+              "value": "bottomRight",
+              "label": "Bottom right"
+            },
+            {
+              "value": "topLeft",
+              "label": "Top left"
+            },
+            {
+              "value": "bottomLeft",
+              "label": "Bottom left"
+            },
+            {
+              "value": "topRightOptionWrapper",
+              "label": "Top right, option wrapper"
+            }
+          ],
+          "default": "topRight"
+        },
+        {
+          "type": "text",
+          "id": "desktop_height",
+          "label": "Height for desktop",
+          "default": "15px"
+        },
+        {
+          "type": "text",
+          "id": "tablet_height",
+          "label": "Height for tablet",
+          "default": "5px"
+        },
+        {
+          "type": "text",
+          "id": "mobile_height",
+          "label": "Height for mobile",
+          "default": "5px"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_final_sale",
+          "label": "Only show for final sale items",
+          "info": "Items must be tagged with Event_Archive Sale",
+          "default": false
+        },
+        {
+          "type": "checkbox",
+          "id": "hide_final_sale",
+          "label": "Hide for final sale items",
+          "info": "Items must not be tagged with Event_Archive Sale",
+          "default": false
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "Media"
+    },
+    {
+      "type": "paragraph",
+      "content": "Learn more about [media types](https://help.shopify.com/en/manual/products/product-media)"
+    },
+    {
+      "type": "select",
+      "id": "image_size",
+      "label": "Size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "fill",
+          "label": "Fill screen"
+        }
+      ],
+      "default": "large"
+    },
+    {
+      "type": "checkbox",
+      "id": "stack_images_mobile",
+      "label": "Stack images on mobile",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "stack_images",
+      "label": "Stack images on desktop",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_thumbnails",
+      "label": "Show thumbnails on desktop",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_image_zoom",
+      "label": "Enable zoom",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_video_looping",
+      "label": "Enable video looping",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "align_last_item_end_top_right",
+      "label": "Push the last item in the top right section to the end.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "align_last_item_end_bottom_right",
+      "label": "Push the last item in the bottom right section to the end.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "align_last_item_end_top_left",
+      "label": "Push the last item in the top left section to the end.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "align_last_item_end_bottom_left",
+      "label": "Push the last item in the bottom left section to the end.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_physical_gift_card",
+      "label": "Enable physical gift cards",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "app_block_position",
+      "label": "App block position",
+      "options": [
+        {
+          "value": "topRight",
+          "label": "Top right"
+        },
+        {
+          "value": "bottomRight",
+          "label": "Bottom right"
+        },
+        {
+          "value": "topLeft",
+          "label": "Top left"
+        },
+        {
+          "value": "bottomLeft",
+          "label": "Bottom left"
+        },
+        {
+          "value": "topRightOptionWrapper",
+          "label": "Top right, option wrapper"
+        }
+      ],
+      "default": "topRight"
+    }
+  ]
+}
+{% endschema %}
