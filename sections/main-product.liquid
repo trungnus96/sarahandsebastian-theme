@@ -2,7 +2,6 @@
 {%- assign share_buttons_block = section.blocks | where: 'type', 'share_buttons' | first -%}
 {%- assign inventory_block = section.blocks | where: 'type', 'inventory' | first -%}
 {%- assign buy_buttons_block = section.blocks | where: 'type', 'buy_buttons' | first -%}
-{%- assign find_in_store_block = section.blocks | where: 'type', 'find_in_store' | first -%}
 {%- assign enquire_block = section.blocks | where: 'type', 'enquire' | first -%}
 {%- assign pendant_block = section.blocks | where: 'type', 'pendant_selector' | first -%}
 {%- assign pendant_multiple_block = section.blocks | where: 'type', 'pendant_multiple_selector' | first -%}
@@ -305,27 +304,6 @@
 				-%}
 			{%- endcapture -%}
 			{%- assign additionalDrawersHtml = additionalDrawersHtml | append: additionalDrawerHtml -%}
-		{%- endcapture -%}
-
-      {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
-        {%- assign topRightOptionWrapper = topRightOptionWrapper | append: blockContent -%}
-      {%- elsif block.settings.block_position == 'topLeft' -%}
-        {%- assign topLeftHtml = topLeftHtml | append: blockContent -%}
-      {%- elsif block.settings.block_position == 'topRight' -%}
-        {%- assign topRightHtml = topRightHtml | append: blockContent -%}
-      {%- elsif block.settings.block_position == 'bottomLeft' -%}
-        {%- assign bottomLeftHtml = bottomLeftHtml | append: blockContent -%}
-      {%- elsif block.settings.block_position == 'bottomRight' -%}
-        {%- assign bottomRightHtml = bottomRightHtml | append: blockContent -%}
-      {%- endif -%}
-
-    {%- when 'find_in_store' -%}
-      {%- if archive_sale and block.settings.hide_final_sale -%}{%- continue -%}{%- endif -%}
-      {%- if block.settings.show_final_sale and archive_sale == blank -%}{%- continue -%}{%- endif -%}
-      {%- capture blockContent -%}
-            <div class="{% if block.settings.button_type == 'underline' %}Link--underline Link Heading{% else %}Button Button--{{ block.settings.button_type }} Button--full{% endif %}" data-action="error-text" data-drawer-id="find-in-store-drawer" aria-label="{{ block.settings.title }}">
-                <span>{{ block.settings.title }}</span>
-            </div>
 		{%- endcapture -%}
 
       {%- if block.settings.block_position == 'topRightOptionWrapper' -%}
@@ -1298,10 +1276,6 @@
     {% render 'klaviyo-product' %}
   {%- endif -%}
 
-  {%- if find_in_store_block != blank -%}
-    {%- render 'find-in-store-drawer', find_in_store_block: find_in_store_block -%}
-  {%- endif -%}
-
   {%- if enquire_block != blank -%}
     {%- if enquire_block.settings.title != blank and enquire_block.settings.content != blank or enquire_block.settings.page != blank -%}
       {%- render 'enquire-drawer', enquire_block: enquire_block -%}
@@ -2029,139 +2003,6 @@
           "type": "page",
           "id": "page",
           "label": "Content from page"
-        },
-        {
-          "type": "select",
-          "id": "block_position",
-          "label": "Block position",
-          "options": [
-            {
-              "value": "topRight",
-              "label": "Top right"
-            },
-            {
-              "value": "bottomRight",
-              "label": "Bottom right"
-            },
-            {
-              "value": "topLeft",
-              "label": "Top left"
-            },
-            {
-              "value": "bottomLeft",
-              "label": "Bottom left"
-            },
-            {
-              "value": "topRightOptionWrapper",
-              "label": "Top right, option wrapper"
-            }
-          ],
-          "default": "topRight"
-        },
-        {
-          "type": "checkbox",
-          "id": "show_final_sale",
-          "label": "Only show for final sale items",
-          "info": "Items must be tagged with Event_Archive Sale",
-          "default": false
-        },
-        {
-          "type": "checkbox",
-          "id": "hide_final_sale",
-          "label": "Hide for final sale items",
-          "info": "Items must not be tagged with Event_Archive Sale",
-          "default": false
-        }
-      ]
-    },
-    {
-      "type": "find_in_store",
-      "name": "Find in store button",
-      "limit": 1,
-      "settings": [
-        {
-          "type": "text",
-          "id": "title",
-          "label": "Title",
-          "default": "Find in Store"
-        },
-        {
-          "type": "text",
-          "id": "contact_store_button",
-          "label": "Contact Store Button",
-          "default": "Contact Store"
-        },
-        {
-          "type": "text",
-          "id": "availability_unavailable",
-          "label": "Title for unavailable products",
-          "default": "Currently unavailable in-store"
-        },
-        {
-          "type": "text",
-          "id": "availability_unavailable_description",
-          "label": "Text for unavailable products",
-          "default": "If you are enquiring to view product only, we encourage you to check alternative sizes or metal as the availability may differ."
-        },
-        {
-          "type": "text",
-          "id": "availability_singlestore",
-          "label": "Text for available products in more than one store",
-          "default": "Available in the following store:"
-        },
-        {
-          "type": "text",
-          "id": "availability_multi_store",
-          "label": "Text for available products in one store",
-          "default": "Available in the following stores:"
-        },
-        {
-          "type": "textarea",
-          "id": "placeholder",
-          "label": "Text area placeholder",
-          "default": "Your message"
-        },
-        {
-          "type": "textarea",
-          "id": "footer_copy",
-          "label": "Footer Copy",
-          "default": "Please note that store inventory changes frequently. Contact the store to learn about current availability and possible made to order requests."
-        },
-        {
-          "type": "select",
-          "id": "button_type",
-          "label": "Button type",
-          "options": [
-            {
-              "value": "primary",
-              "label": "Primary"
-            },
-            {
-              "value": "secondary",
-              "label": "Secondary"
-            },
-            {
-              "value": "tertiary",
-              "label": "Tertiary"
-            },
-            {
-              "value": "underline",
-              "label": "Underline"
-            }
-          ],
-          "default": "secondary"
-        },
-        {
-          "type": "richtext",
-          "id": "content",
-          "label": "Content",
-          "info": "Content shown above input fields."
-        },
-        {
-          "type": "page",
-          "id": "page",
-          "label": "Content from page",
-          "info": "If specified, takes precedence over inline content."
         },
         {
           "type": "select",
