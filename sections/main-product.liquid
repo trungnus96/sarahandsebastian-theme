@@ -1370,6 +1370,15 @@
   <script src='//d1liekpayvooaz.cloudfront.net/apps/uploadery/uploadery.js?shop={{shop.permanent_domain}}' defer onload='uploaderyLoaded()'></script>
 {%- endif -%}
 
+<div
+  id="brauz-find-in-store-config-product-page"
+  data-sd="{{ shop.permanent_domain }}"
+  data-cvi="{{ product.first_available_variant.id }}"
+  data-hodv="{{ product.has_only_default_variant }}"
+  style="display: none; width: 0"
+></div>
+<script src="https://d3aq2u4yw77ivo.cloudfront.net/find-in-store/shopify/sarahandsebastian/find-in-store.shopify.sarahandsebastian.prod.js" async></script>
+
 {% schema %}
 {
   "name": "Product page",
